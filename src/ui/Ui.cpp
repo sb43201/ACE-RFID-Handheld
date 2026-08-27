@@ -125,10 +125,14 @@ void Ui::showReaderStatus(const Pn532Status &status) {
     tft_.drawString("READY", 145, 207, 4);
     tft_.setTextColor(TFT_WHITE, BG);
     tft_.drawString("PRESENT RFID TAG", 160, 285, 4);
+    // Use TFT_eSPI Font 2 for secondary status text. It is smoother and about
+    // twice the height of the small classic face while both lines still fit.
+    tft_.setTextFont(2);
+    tft_.setTextSize(1);
     tft_.setTextColor(TFT_GREEN, BG);
-    tft_.drawString("PN532 ONLINE", 160, 325, 2);
+    tft_.TFT_eSPI::drawString("PN532 ONLINE", 160, 325, 2);
     tft_.setTextColor(AMBER, BG);
-    tft_.drawString("Hold tag near antenna on back", 160, 352, 2);
+    tft_.TFT_eSPI::drawString("Hold tag near antenna on back", 160, 355, 2);
     drawFooterButton(0, 156, "LIBRARY", 0x2124);
     drawFooterButton(160, 160, "WRITE PRESET", 0x2124);
     // High-contrast outlines make the two home actions read as buttons.
@@ -185,11 +189,12 @@ void Ui::drawAceResult() {
   tft_.setTextDatum(TL_DATUM);
 
   auto row = [this](int16_t y, const char *label, const String &value) {
+    tft_.setTextFont(2); tft_.setTextSize(1);
     tft_.setTextColor(MUTED, BG);
-    tft_.drawString(label, 20, y, 2);
+    tft_.TFT_eSPI::drawString(label, 20, y, 2);
     tft_.setTextDatum(TR_DATUM);
     tft_.setTextColor(TFT_WHITE, BG);
-    tft_.drawString(value, 300, y, 2);
+    tft_.TFT_eSPI::drawString(value, 300, y, 2);
     tft_.setTextDatum(TL_DATUM);
   };
   row(210, "SKU", tag.sku[0] ? String(tag.sku) : String("-"));
@@ -199,7 +204,8 @@ void Ui::drawAceResult() {
   row(322, "Length", String(tag.lengthMeters) + " m");
   tft_.setTextDatum(MC_DATUM);
   tft_.setTextColor(MUTED, BG);
-  tft_.drawString("UID " + tag.uidText, 160, 352, 2);
+  tft_.setTextFont(2); tft_.setTextSize(1);
+  tft_.TFT_eSPI::drawString("UID " + tag.uidText, 160, 352, 2);
   tft_.setTextDatum(TL_DATUM);
 
   auto actionButton = [this](int16_t x, int16_t width, const char *label,
@@ -532,7 +538,9 @@ UiAction Ui::handleTouch(const UiTouchSample &sample, bool controlsAllowed) {
       tft_.drawString("DELETE SAVED TAG?", 160, 145, 4);
       tft_.setTextColor(TFT_WHITE, BG);
       tft_.drawString(String(savedTag_.material) + " " + savedTag_.colorName, 160, 220, 4);
-      tft_.setTextColor(AMBER, BG); tft_.drawString("This cannot be undone", 160, 300, 2);
+      tft_.setTextFont(2); tft_.setTextSize(1);
+      tft_.setTextColor(AMBER, BG);
+      tft_.TFT_eSPI::drawString("This cannot be undone", 160, 300, 2);
       drawFooterButton(0, 156, "DELETE", TFT_RED);
       drawFooterButton(160, 160, "CANCEL", 0x2124);
       tft_.setTextDatum(TL_DATUM);
@@ -566,10 +574,29 @@ UiAction Ui::handleTouch(const UiTouchSample &sample, bool controlsAllowed) {
   } else if (screen_ == UiScreen::FormatConfirm && touchStartY_ >= 420) {
     if (touchStartX_ < 158) return UiAction::FormatStorage;
     screen_ = UiScreen::StorageInfo; drawStorageInfo();
+  } else if (screen_ == UiScreen::EraseConfirm && touchStartY_ >= 420) {
+    if (touchStartX_ < 158) return UiAction::FormatStorage;
+    return UiAction::OpenSetup;
   } else if (screen_ == UiScreen::Setup) {
-    if (touchStartY_ >= 85 && touchStartY_ < 160) return UiAction::CalibrateTouch;
-    if (touchStartY_ >= 175 && touchStartY_ < 250) return UiAction::CycleVolume;
-    if (touchStartY_ >= 265 && touchStartY_ < 340) return UiAction::CycleScreenTimeout;
+    if (touchStartY_ >= 60 && touchStartY_ < 120) return UiAction::CalibrateTouch;
+    if (touchStartY_ >= 126 && touchStartY_ < 186) return UiAction::CycleVolume;
+    if (touchStartY_ >= 192 && touchStartY_ < 252) return UiAction::CycleScreenTimeout;
+    if (touchStartY_ >= 258 && touchStartY_ < 318) {
+      screen_ = UiScreen::EraseConfirm;
+      tft_.fillScreen(BG); drawHeader("CONFIRM ERASE");
+      tft_.setTextDatum(MC_DATUM); tft_.setTextColor(TFT_RED, BG);
+      tft_.drawString("ERASE LIBRARY?", 160, 145, 4);
+      tft_.setTextFont(2); tft_.setTextSize(1);
+      tft_.setTextColor(AMBER, BG);
+      tft_.TFT_eSPI::drawString("All saved tags will be deleted", 160, 225, 2);
+      tft_.setTextColor(TFT_WHITE, BG);
+      tft_.TFT_eSPI::drawString("RFID tags are not affected", 160, 275, 2);
+      tft_.TFT_eSPI::drawString("This cannot be undone", 160, 325, 2);
+      drawFooterButton(0, 156, "ERASE", TFT_RED);
+      drawFooterButton(160, 160, "CANCEL", 0x2124);
+      tft_.setTextDatum(TL_DATUM);
+      return UiAction::None;
+    }
     if (touchStartY_ >= 420) return UiAction::CloseSetup;
   }
   return UiAction::None;
@@ -700,12 +727,14 @@ void Ui::drawWritePreview() {
   tft_.setTextColor(CYAN, BG);
   tft_.drawString(selectedPreset().material, 160, 205, 4);
   tft_.setTextColor(TFT_WHITE, BG);
-  tft_.drawString(selectedPreset().name, 160, 238, 2);
+  tft_.setTextFont(2); tft_.setTextSize(1);
+  tft_.TFT_eSPI::drawString(selectedPreset().name, 160, 238, 2);
   tft_.setTextDatum(TL_DATUM);
   auto row = [this](int16_t y, const char *label, const String &value) {
-    tft_.setTextColor(MUTED, BG); tft_.drawString(label, 20, y, 2);
+    tft_.setTextFont(2); tft_.setTextSize(1);
+    tft_.setTextColor(MUTED, BG); tft_.TFT_eSPI::drawString(label, 20, y, 2);
     tft_.setTextDatum(TR_DATUM); tft_.setTextColor(TFT_WHITE, BG);
-    tft_.drawString(value, 300, y, 2); tft_.setTextDatum(TL_DATUM);
+    tft_.TFT_eSPI::drawString(value, 300, y, 2); tft_.setTextDatum(TL_DATUM);
   };
   row(270, "SKU", selectedPreset().sku);
   row(298, "Nozzle", String(selectedPreset().nozzleMin) + " - " + selectedPreset().nozzleMax + " C");
@@ -722,9 +751,10 @@ void Ui::showWriteWaiting(bool fieldMustClear) {
   tft_.setTextDatum(MC_DATUM);
   tft_.setTextColor(CYAN, BG); tft_.drawString("READY TO WRITE", 160, 135, 4);
   tft_.setTextColor(TFT_WHITE, BG); tft_.drawString(selectedPreset().name, 160, 205, 4);
+  tft_.setTextFont(2); tft_.setTextSize(1);
   tft_.setTextColor(MUTED, BG);
-  tft_.drawString(fieldMustClear ? "Remove all tags first" : "Present writable tag", 160, 280, 2);
-  tft_.drawString(fieldMustClear ? "Waiting for clear field" : "Hold tag steady", 160, 312, 2);
+  tft_.TFT_eSPI::drawString(fieldMustClear ? "Remove all tags first" : "Present writable tag", 160, 280, 2);
+  tft_.TFT_eSPI::drawString(fieldMustClear ? "Waiting for clear field" : "Hold tag steady", 160, 312, 2);
   drawFooterButton(0, 320, "CANCEL", 0x2124);
   tft_.setTextDatum(TL_DATUM);
 }
@@ -738,7 +768,9 @@ void Ui::showWriteProgress(const char *phase, uint8_t completed, uint8_t total) 
     tft_.setTextDatum(MC_DATUM); tft_.setTextColor(CYAN, BG);
     tft_.drawString(phase, 160, 145, 4);
     tft_.drawRect(20, 285, 280, 28, MUTED);
-    tft_.setTextColor(MUTED, BG); tft_.drawString("Keep the same tag in place", 160, 360, 2);
+    tft_.setTextFont(2); tft_.setTextSize(1);
+    tft_.setTextColor(MUTED, BG);
+    tft_.TFT_eSPI::drawString("Keep the same tag in place", 160, 360, 2);
   }
   tft_.fillRect(20, 200, 280, 52, BG);
   tft_.fillRect(21, 286, 278, 26, BG);
@@ -755,9 +787,12 @@ void Ui::showWriteSuccess(const String &uid) {
   tft_.setTextDatum(MC_DATUM); tft_.setTextColor(TFT_GREEN, BG);
   tft_.drawString("WRITE COMPLETE", 160, 130, 4);
   tft_.setTextColor(TFT_WHITE, BG); tft_.drawString(selectedPreset().name, 160, 205, 4);
-  tft_.setTextColor(TFT_GREEN, BG); tft_.drawString("Write     PASS", 160, 270, 2);
-  tft_.drawString("Verify    PASS", 160, 305, 2);
-  tft_.setTextColor(MUTED, BG); tft_.drawString("UID " + uid, 160, 355, 2);
+  tft_.setTextFont(2); tft_.setTextSize(1);
+  tft_.setTextColor(TFT_GREEN, BG);
+  tft_.TFT_eSPI::drawString("Write     PASS", 160, 270, 2);
+  tft_.TFT_eSPI::drawString("Verify    PASS", 160, 305, 2);
+  tft_.setTextColor(MUTED, BG);
+  tft_.TFT_eSPI::drawString("UID " + uid, 160, 355, 2);
   drawFooterButton(0, 320, "DONE", HEADER); tft_.setTextDatum(TL_DATUM);
   Serial.println("[ui] Screen=WRITE_SUCCESS");
 }
@@ -767,10 +802,13 @@ void Ui::showWriteFailure(const char *title, const char *detail, bool partial) {
   tft_.fillScreen(BG); drawHeader(cloneMode_ ? "CLONE FAILED" : "WRITE FAILED");
   tft_.setTextDatum(MC_DATUM); tft_.setTextColor(TFT_RED, BG);
   tft_.drawString(title, 160, 145, 4);
-  tft_.setTextColor(TFT_WHITE, BG); tft_.drawString(detail, 160, 220, 2);
+  tft_.setTextFont(2); tft_.setTextSize(1);
+  tft_.setTextColor(TFT_WHITE, BG);
+  tft_.TFT_eSPI::drawString(detail, 160, 220, 2);
   if (partial) {
-    tft_.setTextColor(AMBER, BG); tft_.drawString("TAG MAY CONTAIN", 160, 285, 2);
-    tft_.drawString("PARTIAL ACE DATA", 160, 315, 2);
+    tft_.setTextColor(AMBER, BG);
+    tft_.TFT_eSPI::drawString("TAG MAY CONTAIN", 160, 285, 2);
+    tft_.TFT_eSPI::drawString("PARTIAL ACE DATA", 160, 315, 2);
   }
   drawFooterButton(0, 156, "RETRY", HEADER);
   drawFooterButton(160, 160, "CANCEL", 0x2124);
@@ -791,9 +829,12 @@ void Ui::showCloneCaptured(const AceTagData &source) {
   String color(source.colorName); color.toUpperCase();
   tft_.drawString(color, 160, 122, color.length() > 13 ? 2 : 4);
   tft_.setTextColor(CYAN, BG); tft_.drawString(source.material, 160, 210, 4);
-  tft_.setTextColor(TFT_WHITE, BG); tft_.drawString(source.sku, 160, 250, 2);
+  tft_.setTextFont(2); tft_.setTextSize(1);
+  tft_.setTextColor(TFT_WHITE, BG); tft_.TFT_eSPI::drawString(source.sku, 160, 250, 2);
   tft_.setTextColor(AMBER, BG); tft_.drawString("REMOVE SOURCE TAG", 160, 315, 4);
-  tft_.setTextColor(MUTED, BG); tft_.drawString("Waiting for clear field", 160, 360, 2);
+  tft_.setTextFont(2); tft_.setTextSize(1);
+  tft_.setTextColor(MUTED, BG);
+  tft_.TFT_eSPI::drawString("Waiting for clear field", 160, 360, 2);
   drawFooterButton(0, 320, "CANCEL", 0x2124);
   tft_.setTextDatum(TL_DATUM);
   Serial.println("[ui] Screen=CLONE_SOURCE_CAPTURED");
@@ -812,9 +853,12 @@ void Ui::showSavedCopyCaptured(const AceTagData &source) {
   String color(source.colorName); color.toUpperCase();
   tft_.drawString(color, 160, 122, color.length() > 13 ? 2 : 4);
   tft_.setTextColor(CYAN, BG); tft_.drawString(source.material, 160, 210, 4);
-  tft_.setTextColor(TFT_WHITE, BG); tft_.drawString(source.sku, 160, 250, 2);
+  tft_.setTextFont(2); tft_.setTextSize(1);
+  tft_.setTextColor(TFT_WHITE, BG); tft_.TFT_eSPI::drawString(source.sku, 160, 250, 2);
   tft_.setTextColor(AMBER, BG); tft_.drawString("REMOVE ALL TAGS", 160, 315, 4);
-  tft_.setTextColor(MUTED, BG); tft_.drawString("Waiting for clear field", 160, 360, 2);
+  tft_.setTextFont(2); tft_.setTextSize(1);
+  tft_.setTextColor(MUTED, BG);
+  tft_.TFT_eSPI::drawString("Waiting for clear field", 160, 360, 2);
   drawFooterButton(0, 320, "CANCEL", 0x2124);
   tft_.setTextDatum(TL_DATUM);
   Serial.println("[ui] Screen=SAVED_COPY_CAPTURED");
@@ -828,9 +872,10 @@ void Ui::showCloneWaiting(const AceTagData &source) {
   tft_.drawString("READY TO CLONE", 160, 125, 4);
   tft_.setTextColor(TFT_WHITE, BG);
   tft_.drawString(String(source.material) + " " + source.colorName, 160, 205, 4);
+  tft_.setTextFont(2); tft_.setTextSize(1);
   tft_.setTextColor(MUTED, BG);
-  tft_.drawString("Present writable destination", 160, 280, 2);
-  tft_.drawString("Hold tag steady", 160, 315, 2);
+  tft_.TFT_eSPI::drawString("Present writable destination", 160, 280, 2);
+  tft_.TFT_eSPI::drawString("Hold tag steady", 160, 315, 2);
   drawFooterButton(0, 320, "CANCEL", 0x2124);
   tft_.setTextDatum(TL_DATUM);
   Serial.println("[ui] Screen=CLONE_WAITING");
@@ -843,10 +888,13 @@ void Ui::showCloneSuccess(const AceTagData &source, const String &uid) {
   tft_.drawString("CLONE COMPLETE", 160, 105, 4);
   tft_.setTextColor(TFT_WHITE, BG);
   tft_.drawString(String(source.material) + " " + source.colorName, 160, 175, 4);
-  tft_.setTextColor(TFT_GREEN, BG); tft_.drawString("Write     PASS", 160, 245, 2);
-  tft_.drawString("Verify    PASS", 160, 280, 2);
-  tft_.setTextColor(MUTED, BG); tft_.drawString("Destination UID", 160, 330, 2);
-  tft_.drawString(uid, 160, 360, 2);
+  tft_.setTextFont(2); tft_.setTextSize(1);
+  tft_.setTextColor(TFT_GREEN, BG);
+  tft_.TFT_eSPI::drawString("Write     PASS", 160, 245, 2);
+  tft_.TFT_eSPI::drawString("Verify    PASS", 160, 280, 2);
+  tft_.setTextColor(MUTED, BG);
+  tft_.TFT_eSPI::drawString("Destination UID", 160, 330, 2);
+  tft_.TFT_eSPI::drawString(uid, 160, 360, 2);
   drawFooterButton(0, 320, "DONE", HEADER); tft_.setTextDatum(TL_DATUM);
   Serial.println("[ui] Screen=CLONE_SUCCESS");
 }
@@ -951,9 +999,10 @@ void Ui::drawSavedDetail() {
   tft_.setTextColor(CYAN, BG); tft_.drawString(tag.material, 160, 185, 4);
   tft_.setTextDatum(TL_DATUM);
   auto row = [this](int16_t y, const char *label, const String &value) {
-    tft_.setTextColor(MUTED, BG); tft_.drawString(label, 20, y, 2);
+    tft_.setTextFont(2); tft_.setTextSize(1);
+    tft_.setTextColor(MUTED, BG); tft_.TFT_eSPI::drawString(label, 20, y, 2);
     tft_.setTextDatum(TR_DATUM); tft_.setTextColor(TFT_WHITE, BG);
-    tft_.drawString(value, 300, y, 2); tft_.setTextDatum(TL_DATUM);
+    tft_.TFT_eSPI::drawString(value, 300, y, 2); tft_.setTextDatum(TL_DATUM);
   };
   row(210, "SKU", tag.sku);
   row(238, "Nozzle", String(tag.nozzleMin) + " - " + tag.nozzleMax + " C");
@@ -1029,9 +1078,10 @@ void Ui::drawStorageInfo() {
     tft_.drawString("Total: " + String(storageTotal_ / 1024) + " KiB", 160, 180, 4);
     tft_.drawString("Used: " + String(storageUsed_ / 1024) + " KiB", 160, 225, 4);
     tft_.drawString("Free: " + String((storageTotal_ - storageUsed_) / 1024) + " KiB", 160, 270, 4);
+    tft_.setTextFont(2); tft_.setTextSize(1);
     tft_.setTextColor(MUTED, BG);
-    tft_.drawString("Saved tags: " + String(libraryEntries_ ? libraryEntries_->size() : 0), 160, 325, 2);
-    tft_.drawString("Invalid skipped: " + String(invalidFiles_), 160, 355, 2);
+    tft_.TFT_eSPI::drawString("Saved tags: " + String(libraryEntries_ ? libraryEntries_->size() : 0), 160, 325, 2);
+    tft_.TFT_eSPI::drawString("Invalid skipped: " + String(invalidFiles_), 160, 355, 2);
   }
   drawFooterButton(0, 320, "BACK", HEADER); tft_.setTextDatum(TL_DATUM);
 }
@@ -1039,27 +1089,29 @@ void Ui::drawStorageInfo() {
 void Ui::showSetup(const char *volumeLabel, uint16_t screenTimeoutSeconds) {
   screen_ = UiScreen::Setup;
   tft_.fillScreen(BG); drawHeader("SETUP");
-  auto settingButton = [this](int16_t y, const char *label, const String &value) {
-    tft_.fillRoundRect(12, y, 296, 70, 8, HEADER);
-    tft_.drawRoundRect(12, y, 296, 70, 8, MUTED);
+  auto settingButton = [this](int16_t y, const char *label, const String &value,
+                              uint16_t fill, uint16_t labelColor) {
+    tft_.fillRoundRect(12, y, 296, 58, 8, fill);
+    tft_.drawRoundRect(12, y, 296, 58, 8, MUTED);
     // Use the same large classic typeface role as the header. Two centered
     // lines prevent long setting names and their values from overlapping.
-    tft_.setTextDatum(MC_DATUM); tft_.setTextColor(AMBER, HEADER);
-    tft_.drawString(label, 160, y + 22, 4);
-    tft_.setTextColor(CYAN, HEADER);
-    tft_.drawString(value, 160, y + 51, 4);
+    tft_.setTextDatum(MC_DATUM); tft_.setTextColor(labelColor, fill);
+    tft_.drawString(label, 160, y + 18, 4);
+    tft_.setTextColor(CYAN, fill);
+    tft_.drawString(value, 160, y + 43, 4);
   };
-  settingButton(85, "Touch calibration", "START");
-  settingButton(175, "Beep volume", volumeLabel);
+  settingButton(60, "Touch calibration", "START", HEADER, AMBER);
+  settingButton(126, "Beep volume", volumeLabel, HEADER, AMBER);
   const String screenValue = screenTimeoutSeconds == 0
                                  ? String("ALWAYS ON")
                                  : String(screenTimeoutSeconds) + " SEC";
-  settingButton(265, "Screen sleep", screenValue);
+  settingButton(192, "Screen sleep", screenValue, HEADER, AMBER);
+  settingButton(258, "Erase library", "ALL SAVED TAGS", 0x7800, TFT_WHITE);
   tft_.setTextDatum(MC_DATUM); tft_.setTextColor(MUTED, BG);
   tft_.drawString("PN532 firmware " + String(readerStatus_.firmwareMajor) + "." +
-                  String(readerStatus_.firmwareMinor), 160, 365, 2);
+                  String(readerStatus_.firmwareMinor), 160, 340, 2);
   tft_.setTextColor(TFT_WHITE, BG);
-  tft_.drawString("Tap a setting to change", 160, 394, 4);
+  tft_.drawString("Tap a setting to change", 160, 382, 4);
   drawFooterButton(0, 320, "HOME", 0x2124);
   tft_.setTextDatum(TL_DATUM);
   Serial.println("[ui] Screen=SETUP");

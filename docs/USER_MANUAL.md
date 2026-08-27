@@ -137,6 +137,13 @@ For a timed mode, the display dims halfway to the selected off time and turns of
 
 Select `HOME` to return to Ready.
 
+### Erase library
+
+Select the red `Erase library` setting to remove every saved tag from internal
+storage. A separate confirmation screen explains that RFID tags are not
+affected and requires an explicit `ERASE` tap. This action cannot be undone.
+Use `CANCEL` to return to Setup without changing the library.
+
 ## 10. Battery display
 
 The header shows:

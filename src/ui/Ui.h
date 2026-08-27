@@ -13,7 +13,8 @@ enum class UiScreen : uint8_t {
   Scan, AceResult, GenericTag, UnsupportedTag, ReadError, RawInspector,
   WriteSelect, WritePreview, WriteWaiting, WriteProgress, WriteSuccess, WriteFailure,
   CloneCaptured, CloneWaiting, CloneSuccess, LibraryList, SavedDetail, SavedRaw,
-  DeleteConfirm, SaveDuplicate, SaveResult, StorageInfo, FormatConfirm, Setup
+  DeleteConfirm, SaveDuplicate, SaveResult, StorageInfo, FormatConfirm,
+  EraseConfirm, Setup
 };
 
 enum class UiAction : uint8_t {
