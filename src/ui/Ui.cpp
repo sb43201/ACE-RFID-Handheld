@@ -928,14 +928,19 @@ void Ui::drawLibrary() {
   drawHeader((count + " SAVED").c_str());
   if (!storageAvailable_) {
     tft_.setTextDatum(MC_DATUM); tft_.setTextColor(TFT_RED, BG);
-    tft_.drawString("STORAGE UNAVAILABLE", 160, 190, 4);
+    tft_.drawString("STORAGE", 128, 175, 4);
+    tft_.drawString("UNAVAILABLE", 128, 205, 4);
+    tft_.setTextFont(2); tft_.setTextSize(1);
     tft_.setTextColor(MUTED, BG);
-    tft_.drawString("RFID functions remain available", 160, 245, 2);
+    tft_.TFT_eSPI::drawString("RFID functions", 128, 250, 2);
+    tft_.TFT_eSPI::drawString("remain available", 128, 275, 2);
   } else if (!libraryEntries_ || libraryEntries_->empty()) {
     tft_.setTextDatum(MC_DATUM); tft_.setTextColor(TFT_WHITE, BG);
-    tft_.drawString("No saved tags yet", 160, 180, 4);
+    tft_.drawString("No saved tags yet", 128, 180, 4);
+    tft_.setTextFont(2); tft_.setTextSize(1);
     tft_.setTextColor(MUTED, BG);
-    tft_.drawString("Scan an ACE tag and tap SAVE", 160, 235, 2);
+    tft_.TFT_eSPI::drawString("Scan an ACE tag", 128, 230, 2);
+    tft_.TFT_eSPI::drawString("then tap SAVE", 128, 255, 2);
   } else {
     tft_.setTextDatum(TL_DATUM);
     for (uint8_t row = 0; row < 5; ++row) {
