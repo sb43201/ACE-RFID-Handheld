@@ -123,3 +123,7 @@ docs/          User and technical documentation
 ## Disclaimer
 
 RFID writing can permanently alter compatible tags. Use this firmware at your own risk. Keep backups of known-good payloads and do not experiment on the only tag for a filament roll.
+
+## License
+
+This project is released under the [MIT License](LICENSE).
