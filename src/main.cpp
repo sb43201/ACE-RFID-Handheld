@@ -114,6 +114,10 @@ void setup() {
   Serial.println();
   Serial.println("[boot] ACE RFID Handheld");
 
+  // This handheld is fully offline. No Wi-Fi, Bluetooth Classic, or BLE
+  // library is linked or initialized, so both ESP32 radios remain off.
+  Serial.println("[power] WiFi=OFF Bluetooth=OFF (not initialized)");
+
   ui.begin();
   battery.begin();
   ui.updateBattery(battery.percent(), battery.millivolts());

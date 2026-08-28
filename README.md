@@ -16,6 +16,7 @@ The handheld combines a Hosyond/LCDWiki E32R35T 3.5-inch touchscreen with a PN53
 - Saves tags to a CRC-protected LittleFS library with duplicate handling, raw view, rewrite, and delete.
 - Touchscreen setup for calibration, beep volume, and screen timeout.
 - Battery icon, percentage, and voltage in the header.
+- Wi-Fi and Bluetooth stacks are not linked or initialized, keeping both radios off for an offline, lower-power handheld.
 - Musical startup, success, and error cues through the onboard speaker.
 - Screen dim/off and touch wake based on the SwitchBot Blind Remote power-management pattern.
 
@@ -50,6 +51,7 @@ The PN532 antenna is mounted at the back of the handheld. Present tags to the re
 | TFT | CS / DC / backlight | 15 / 2 / 27 |
 | Touch | CS / IRQ | 33 / 36 |
 | PN532 | SCK / MISO / MOSI / SS | 18 / 19 / 23 / 21 |
+| PN532 | RSTPD_N | 25 (E32R35T SCL header) |
 | Speaker | audio / active-low enable | 26 / 4 |
 | Battery | ADC | 34 |
 

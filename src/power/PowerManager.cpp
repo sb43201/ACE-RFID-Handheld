@@ -1,5 +1,6 @@
 #include "PowerManager.h"
 
+#include <driver/gpio.h>
 #include <driver/rtc_io.h>
 
 #include "../config/Hardware.h"
@@ -14,6 +15,16 @@ void PowerManager::begin() {
   dimTimeoutMs_ = screenTimeoutMs_ / 2;
   const esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
   wokeByTouch_ = cause == ESP_SLEEP_WAKEUP_EXT0;
+
+  // RSTPD_N was latched LOW before deep sleep. Release the pad hold first,
+  // then drive it HIGH so the PN532 can boot before reader initialization.
+  gpio_deep_sleep_hold_dis();
+  gpio_hold_dis(static_cast<gpio_num_t>(Hardware::PN532_RSTPD_N));
+  pinMode(Hardware::PN532_RSTPD_N, OUTPUT);
+  digitalWrite(Hardware::PN532_RSTPD_N, HIGH);
+  delay(10);
+  Serial.printf("[power] PN532 RSTPD_N=HIGH GPIO%u\n",
+                Hardware::PN532_RSTPD_N);
   if (wokeByTouch_) rtc_gpio_deinit(static_cast<gpio_num_t>(Hardware::TOUCH_IRQ_PIN));
   pinMode(Hardware::TOUCH_IRQ_PIN, INPUT);
 
@@ -30,8 +41,9 @@ void PowerManager::begin() {
     Serial.println("[power] Wake: power-on/reset");
   }
   if (screenTimeoutSeconds_)
-    Serial.printf("[power] Backlight dim=%us off=%us deep-sleep=180s\n",
-                  screenTimeoutSeconds_ / 2, screenTimeoutSeconds_);
+    Serial.printf("[power] Backlight dim=%us off=%us deep-sleep=%lus\n",
+                  screenTimeoutSeconds_ / 2, screenTimeoutSeconds_,
+                  static_cast<unsigned long>(DEEP_SLEEP_TIMEOUT_MS / 1000UL));
   else Serial.println("[power] Screen always on; dim/off/deep-sleep disabled");
 }
 
@@ -145,6 +157,17 @@ void PowerManager::enterDeepSleep() {
   }
   rtc_gpio_pullup_dis(wakePin);
   rtc_gpio_pulldown_dis(wakePin);
+
+  // Put the PN532 into Hard Power Down and latch GPIO25 LOW while the ESP32
+  // sleeps. Its module pull-up would otherwise re-enable the reader.
+  const gpio_num_t pn532ResetPin =
+      static_cast<gpio_num_t>(Hardware::PN532_RSTPD_N);
+  pinMode(Hardware::PN532_RSTPD_N, OUTPUT);
+  digitalWrite(Hardware::PN532_RSTPD_N, LOW);
+  gpio_hold_en(pn532ResetPin);
+  gpio_deep_sleep_hold_en();
+  Serial.printf("[power] PN532 RSTPD_N=LOW GPIO%u; entering deep sleep\n",
+                Hardware::PN532_RSTPD_N);
   Serial.flush();
   esp_deep_sleep_start();
 }

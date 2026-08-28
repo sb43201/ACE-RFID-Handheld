@@ -23,4 +23,7 @@ constexpr uint8_t PN532_SCK = 18;
 constexpr uint8_t PN532_MISO = 19;
 constexpr uint8_t PN532_MOSI = 23;
 constexpr uint8_t PN532_SS = 21;
+// The E32R35T exposes GPIO25 as SCL. I2C is unused in this project, so the
+// pin controls the PN532 RSTPD_N input and is held LOW during deep sleep.
+constexpr uint8_t PN532_RSTPD_N = 25;
 }  // namespace Hardware

@@ -133,7 +133,9 @@ Tap `Screen sleep` to cycle through:
 - 120 seconds
 - Always On
 
-For a timed mode, the display dims halfway to the selected off time and turns off at the selected time. RFID scanning continues while the display is off. Tag or touch activity wakes the display. After prolonged inactivity, the handheld can enter deep sleep and wake from the touchscreen interrupt. Always On disables automatic dim, off, and deep sleep.
+For a timed mode, the display dims halfway to the selected off time and turns the backlight fully off at the selected time. RFID scanning continues while the display is off. Tag or touch activity wakes the display. After prolonged inactivity, the handheld can enter deep sleep and wake from the touchscreen interrupt. Always On disables automatic dim, off, and deep sleep.
+
+During deep sleep, GPIO25 holds the PN532 `RSTPD_N` input low to place the reader in Hard Power Down. Touching the screen wakes the ESP32 and re-enables the PN532.
 
 Select `HOME` to return to Ready.
 
