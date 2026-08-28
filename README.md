@@ -39,6 +39,7 @@ Disconnect power before changing the PN532 interface switches. Configure the mod
 | VCC | 3.3 V | Power |
 | GND | GND | Common ground |
 | IRQ | Not connected | Polling is used |
+| RSTPD_N | GPIO25 / SCL | Hard Power Down during ESP32 deep sleep |
 | RSTO | Not connected | Not required by the current driver |
 
 The PN532 antenna is mounted at the back of the handheld. Present tags to the rear antenna area.
@@ -120,6 +121,8 @@ src/rfid/      PN532 access, ACE codec, tag model, and presets
 src/storage/   LittleFS saved-tag library
 src/ui/        Touch handling and all 320×480 screens
 docs/          User and technical documentation
+images/        Project photographs, screenshots, and wiring images
+enclosure/     Printable enclosure STL files and model exports
 ```
 
 ## Disclaimer
