@@ -55,6 +55,21 @@ void emulateTag(const AceTagData &tag, bool fromSaved, bool fromPreset = false) 
                 tag.uidText.c_str(), tag.sku);
   ui.showEmulationWaiting(tag, fromSaved, fromPreset);
   power.wakeDisplayForRfid();
+
+  if (fromPreset) {
+    // Library/Saved screens leave normal reader polling active, but the
+    // Write/Preset workflow intentionally suppresses reader.poll(). After a
+    // completed target session the PN532 needs an initiator command cycle
+    // before it will reliably ACK TgInitAsTarget again. Mirror the Library
+    // path here without allowing the discarded probe to change the UI.
+    Serial.println("[emu] Priming PN532 reader state before preset target mode");
+    AceTagData ignoredProbe;
+    for (uint8_t attempt = 0; attempt < 3; ++attempt) {
+      reader.detectTag(ignoredProbe, 80);
+      delay(10);
+    }
+  }
+
   const EmulationResult result = targetEmulator.run(
       tag, 60000, updateEmulationProgress, checkEmulationCancel);
 
