@@ -1100,19 +1100,14 @@ void Ui::showEmulationResult(bool complete, const char *detail) {
   tft_.setTextDatum(MC_DATUM);
   tft_.setTextColor(complete ? TFT_GREEN : TFT_RED, BG);
   tft_.drawString(complete ? "READ COMPLETE" : "READ FAILED", 160, 145, 4);
+  // Match the established success/failure page typography: large status,
+  // standard TFT_eSPI Font 2 for supporting information.
+  tft_.setTextFont(2);
+  tft_.setTextSize(1);
   tft_.setTextColor(TFT_WHITE, BG);
-  String detailText(detail);
-  if (detailText.length() <= 22) {
-    tft_.drawString(detailText, 160, 220, 4);
-  } else {
-    int16_t split = detailText.lastIndexOf(' ', 22);
-    if (split < 1) split = 22;
-    tft_.drawString(detailText.substring(0, split), 160, 205, 4);
-    tft_.drawString(detailText.substring(split + 1), 160, 237, 4);
-  }
+  tft_.TFT_eSPI::drawString(detail, 160, 225, 2);
   tft_.setTextColor(MUTED, BG);
-  tft_.drawString("REMOVE HANDHELD", 160, 295, 4);
-  tft_.drawString("FROM ACE SENSOR", 160, 330, 4);
+  tft_.TFT_eSPI::drawString("Remove handheld from ACE sensor", 160, 315, 2);
   drawFooterButton(0, 320, "DONE", 0x2124);
   tft_.setTextDatum(TL_DATUM);
 }
