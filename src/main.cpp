@@ -40,6 +40,10 @@ void updateEmulationProgress(uint8_t startPage) {
   ui.showEmulationProgress(startPage);
 }
 
+bool checkEmulationCancel() {
+  return ui.emulationCancelRequested();
+}
+
 void emulateTag(const AceTagData &tag, bool fromSaved) {
   if (!tag.readOk || !tag.aceValid) {
     ui.showEmulationResult(false, "Valid ACE tag data required");
@@ -51,7 +55,7 @@ void emulateTag(const AceTagData &tag, bool fromSaved) {
   ui.showEmulationWaiting(tag, fromSaved);
   power.wakeDisplayForRfid();
   const EmulationResult result = targetEmulator.run(
-      tag, 60000, updateEmulationProgress);
+      tag, 60000, updateEmulationProgress, checkEmulationCancel);
 
   // Target mode changes the PN532 state. A hardware reset guarantees that
   // normal handheld reader mode is restored even after activation timeout.
@@ -62,6 +66,13 @@ void emulateTag(const AceTagData &tag, bool fromSaved) {
   const Pn532Status restored = reader.begin();
   Serial.printf("[emu] Reader restore %s\n",
                 restored.found && restored.samConfigured ? "PASS" : "FAILED");
+
+  if (result == EmulationResult::Cancelled) {
+    Serial.println("[emu] Cancelled by user; returning to library");
+    ui.showLibrary(library.entries(), library.available(), library.totalBytes(),
+                   library.usedBytes(), library.invalidCount());
+    return;
+  }
 
   const bool complete = result == EmulationResult::Complete;
   const char *detail = complete ? "ACE read pages 4-39" :

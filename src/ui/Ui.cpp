@@ -1023,6 +1023,7 @@ void Ui::showSavedDetail(uint32_t id, const AceTagData &tag) {
 
 void Ui::showEmulationWaiting(const AceTagData &tag, bool fromSaved) {
   emulationFromSaved_ = fromSaved;
+  emulationCancelArmed_ = false;
   screen_ = UiScreen::EmulateWaiting;
   tft_.fillScreen(BG);
   drawHeader("EMULATE TAG");
@@ -1048,24 +1049,25 @@ void Ui::showEmulationWaiting(const AceTagData &tag, bool fromSaved) {
   }
 
   tft_.setTextColor(AMBER, BG);
-  tft_.drawString("READ ONLY - WRITES BLOCKED", 160, 326, 2);
+  tft_.drawString("READ ONLY - WRITES BLOCKED", 160, 318, 2);
 
   tft_.setTextColor(TFT_LIGHTGREY, BG);
-  tft_.drawString("ACE READ PROGRESS", 160, 359, 2);
+  tft_.drawString("ACE READ PROGRESS", 160, 343, 2);
 
   // ACE reads nine four-page blocks: 04, 08, ... 24. Progress fills one
   // preallocated segment per successful response, avoiding a full redraw
   // during the timing-sensitive RF session.
   for (uint8_t step = 0; step < 9; ++step) {
     const int16_t x = 14 + step * 33;
-    tft_.drawRect(x, 382, 28, 20, TFT_DARKGREY);
-    tft_.fillRect(x + 2, 384, 24, 16, BG);
+    tft_.drawRect(x, 365, 28, 20, TFT_DARKGREY);
+    tft_.fillRect(x + 2, 367, 24, 16, BG);
   }
   tft_.setTextColor(TFT_WHITE, BG);
-  tft_.drawString("04", 14, 418, 2);
+  tft_.drawString("04", 14, 401, 2);
   tft_.setTextDatum(TR_DATUM);
-  tft_.drawString("24", 306, 418, 2);
+  tft_.drawString("24", 306, 401, 2);
   tft_.setTextDatum(TL_DATUM);
+  drawFooterButton(0, 320, "CANCEL", TFT_RED);
 }
 
 void Ui::showEmulationProgress(uint8_t startPage) {
@@ -1076,7 +1078,19 @@ void Ui::showEmulationProgress(uint8_t startPage) {
 
   const uint8_t step = (startPage - 0x04) / 4;
   const int16_t x = 14 + step * 33;
-  tft_.fillRect(x + 2, 384, 24, 16, TFT_GREEN);
+  tft_.fillRect(x + 2, 367, 24, 16, TFT_GREEN);
+}
+
+bool Ui::emulationCancelRequested() {
+  if (screen_ != UiScreen::EmulateWaiting) return false;
+  const UiTouchSample sample = sampleTouch();
+  // Require one observed release after entering the page so the tap that
+  // launched emulation can never be interpreted as Cancel.
+  if (!emulationCancelArmed_) {
+    if (!sample.down) emulationCancelArmed_ = true;
+    return false;
+  }
+  return sample.down && sample.y >= 420;
 }
 
 void Ui::showEmulationResult(bool complete, const char *detail) {
@@ -1085,11 +1099,20 @@ void Ui::showEmulationResult(bool complete, const char *detail) {
   drawHeader("EMULATION RESULT");
   tft_.setTextDatum(MC_DATUM);
   tft_.setTextColor(complete ? TFT_GREEN : TFT_RED, BG);
-  tft_.drawString(complete ? "READ COMPLETE" : "READ FAILED", 160, 165, 4);
+  tft_.drawString(complete ? "READ COMPLETE" : "READ FAILED", 160, 145, 4);
   tft_.setTextColor(TFT_WHITE, BG);
-  tft_.drawString(detail, 160, 245, 2);
+  String detailText(detail);
+  if (detailText.length() <= 22) {
+    tft_.drawString(detailText, 160, 220, 4);
+  } else {
+    int16_t split = detailText.lastIndexOf(' ', 22);
+    if (split < 1) split = 22;
+    tft_.drawString(detailText.substring(0, split), 160, 205, 4);
+    tft_.drawString(detailText.substring(split + 1), 160, 237, 4);
+  }
   tft_.setTextColor(MUTED, BG);
-  tft_.drawString("Remove handheld from ACE sensor", 160, 315, 2);
+  tft_.drawString("REMOVE HANDHELD", 160, 295, 4);
+  tft_.drawString("FROM ACE SENSOR", 160, 330, 4);
   drawFooterButton(0, 320, "DONE", 0x2124);
   tft_.setTextDatum(TL_DATUM);
 }

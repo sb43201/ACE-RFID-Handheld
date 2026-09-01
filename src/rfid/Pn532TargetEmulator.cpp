@@ -36,6 +36,14 @@ bool Pn532TargetEmulator::ready() {
 bool Pn532TargetEmulator::waitReady(uint32_t timeoutMs) {
   const uint32_t started = millis();
   do {
+    const uint32_t now = millis();
+    if (cancel_ && now - lastCancelPollMs_ >= 20) {
+      lastCancelPollMs_ = now;
+      if (cancel_()) {
+        cancelled_ = true;
+        return false;
+      }
+    }
     if (ready()) return true;
     delay(2);
   } while (millis() - started < timeoutMs);
@@ -195,7 +203,8 @@ bool Pn532TargetEmulator::handleInitiatorCommand(const AceTagData &tag,
 
 EmulationResult Pn532TargetEmulator::run(const AceTagData &tag,
                                          uint32_t activationTimeoutMs,
-                                         ProgressCallback progress) {
+                                         ProgressCallback progress,
+                                         CancelCallback cancel) {
   static const uint8_t targetParameters[] = {
     0x00,
     0x04, 0x00, 0x12, 0x34, 0x56, 0x00,
@@ -207,10 +216,15 @@ EmulationResult Pn532TargetEmulator::run(const AceTagData &tag,
   };
   uint8_t response[32];
   size_t responseLength = 0;
+  cancel_ = cancel;
+  cancelled_ = false;
+  lastCancelPollMs_ = millis() - 20;
   Serial.printf("[emu] Waiting for ACE: %s %s\n", tag.material, tag.colorName);
   if (!command(TG_INIT_AS_TARGET, targetParameters, sizeof(targetParameters),
-               response, sizeof(response), responseLength, activationTimeoutMs))
+               response, sizeof(response), responseLength, activationTimeoutMs)) {
+    if (cancelled_) return EmulationResult::Cancelled;
     return EmulationResult::Timeout;
+  }
 
   bool completed = false;
   if (responseLength > 1 &&
@@ -221,8 +235,10 @@ EmulationResult Pn532TargetEmulator::run(const AceTagData &tag,
   while (true) {
     responseLength = 0;
     if (!command(TG_GET_INITIATOR_COMMAND, nullptr, 0, response,
-                 sizeof(response), responseLength, 1000))
+                 sizeof(response), responseLength, 1000)) {
+      if (cancelled_) return EmulationResult::Cancelled;
       return EmulationResult::TransportError;
+    }
     if (!responseLength || response[0] != 0x00)
       return completed ? EmulationResult::Complete : EmulationResult::Interrupted;
     if (!handleInitiatorCommand(tag, response + 1, responseLength - 1,

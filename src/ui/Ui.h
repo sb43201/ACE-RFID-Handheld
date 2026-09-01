@@ -82,6 +82,7 @@ class Ui {
   void showSetup(const char *volumeLabel, uint16_t screenTimeoutSeconds);
   void showEmulationWaiting(const AceTagData &tag, bool fromSaved);
   void showEmulationProgress(uint8_t startPage);
+  bool emulationCancelRequested();
   void showEmulationResult(bool complete, const char *detail);
   void runTouchCalibration() { calibrate(); }
   void updateBattery(uint8_t percent, uint16_t millivolts);
@@ -149,6 +150,7 @@ class Ui {
   uint16_t invalidFiles_ = 0;
   bool storageAvailable_ = false;
   bool emulationFromSaved_ = false;
+  bool emulationCancelArmed_ = false;
   uint8_t batteryPercent_ = 0;
   uint16_t batteryMillivolts_ = 0;
 };
