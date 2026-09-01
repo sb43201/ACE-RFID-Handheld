@@ -1,8 +1,8 @@
 # ACE RFID Handheld
 
-Portable ESP32 reader, writer, cloner, and library for Anycubic ACE filament RFID tags.
+Portable ESP32 reader, writer, cloner, read-only emulator, and library for Anycubic ACE filament RFID tags.
 
-The handheld combines a Hosyond/LCDWiki E32R35T 3.5-inch touchscreen with a PN532 NFC module. It reads ACE filament metadata, presents an accessible full-size color plate and color name, writes verified presets to compatible rewritable tags, clones ACE payloads, and stores saved tags in onboard flash.
+The handheld combines a Hosyond/LCDWiki E32R35T 3.5-inch touchscreen with a PN532 NFC module. It reads ACE filament metadata, presents an accessible full-size color plate and color name, writes verified presets to compatible rewritable tags, clones ACE payloads, emulates tags to an ACE reader, and stores scanned or generated presets in onboard flash.
 
 > This is an independent community project. It is not affiliated with or endorsed by Anycubic.
 
@@ -12,8 +12,10 @@ The handheld combines a Hosyond/LCDWiki E32R35T 3.5-inch touchscreen with a PN53
 - Large color plate and written color name for color-blind accessibility.
 - Writes community, catalog, and factory-captured filament presets.
 - Clones the complete ACE payload on pages 4–31 and verifies every byte.
+- Emulates scanned, saved, and built-in preset tags in read-only PN532 target mode.
+- Shows ACE read progress, blocks write commands during emulation, and provides an on-screen Cancel action.
 - Detects factory-locked or incompatible tags and avoids reporting false success.
-- Saves tags to a CRC-protected LittleFS library with duplicate handling, raw view, rewrite, and delete.
+- Saves scanned tags and generated presets to a CRC-protected LittleFS library with duplicate handling, raw view, rewrite, emulation, and delete.
 - Touchscreen setup for calibration, beep volume, and screen timeout.
 - Battery icon, percentage, and voltage in the header.
 - Wi-Fi and Bluetooth stacks are not linked or initialized, keeping both radios off for an offline, lower-power handheld.
@@ -85,7 +87,9 @@ The serial monitor uses 115200 baud. Upload speed is configured as 921600 baud; 
 - Scan: hold an ACE tag near the antenna on the back.
 - Write preset: choose `WRITE PRESET`, select a material and color, review the details, and explicitly arm writing.
 - Clone: scan a valid ACE source, select `CLONE`, remove the source, and present a different rewritable destination.
-- Library: scan a valid ACE tag and select `SAVE`; open `LIBRARY` from the Ready screen to view saved records.
+- Emulate a scanned tag: scan it, select `EMU`, remove the source tag, and hold the handheld's PN532 antenna near the ACE sensor.
+- Emulate a preset: choose `WRITE PRESET`, select a color, then use the yellow `EMU` button.
+- Library: scan a valid ACE tag and select `SAVE`, or use the green `SAVE` button on a preset preview; open `LIBRARY` from the Ready screen to view saved records and emulate them later.
 - Setup: long-press the Ready/Scan screen for about 1.2 seconds.
 
 See the [User Manual](docs/USER_MANUAL.md) for complete operating and safety instructions.
@@ -99,11 +103,21 @@ See the [User Manual](docs/USER_MANUAL.md) for complete operating and safety ins
 - Never remove or exchange a tag during writing or verification.
 - Test with expendable tags before relying on a newly purchased tag type.
 
+## Emulation behavior
+
+Emulation is intentionally read-only. The handheld responds to the ACE reader's page-read commands but refuses NFC write commands. The `READ ONLY - WRITES BLOCKED` message describes this behavior; it does not mean that the saved Library record is locked.
+
+The ACE reader normally requests nine four-page blocks from page `04` through page `24`. The EMU progress display advances after each successful response. `READ COMPLETE` indicates that the complete expected read sequence was served. Use `CANCEL` to leave target mode and return to Library.
+
+Before preset emulation, the firmware performs short passive-reader probes to place the PN532 in a reliable state. This replaces the previously observed need to visit Library between target-mode sessions.
+
+Built-in presets do not originate from a physical NFC tag, so saving one to Library assigns it a deterministic synthetic seven-byte source UID. The same preset always receives the same UID, different preset payloads receive different UIDs, and printer recognition continues to come from the ACE payload fields.
+
 ## Data integrity
 
 Writes are followed by a complete read-back of pages 4–31 and byte-for-byte verification. Clone data is captured by value before the destination is accepted. The saved-tag library uses versioned binary records, CRC32 validation, and a temporary-file/rename workflow.
 
-The core read, preset-write, protection-detection, clone, sound, display, touch, battery, and power-management paths have been exercised on hardware. LittleFS library functionality is implemented and build-verified; users should validate persistence and format behavior on their own board before storing irreplaceable records.
+The core read, preset-write, protection-detection, clone, Library, read-only emulation, sound, display, touch, battery, and power-management paths have been exercised on hardware. Saved genuine tags and consecutive built-in presets—including PLA, Silk, ABS, PC, and ASA examples—were recognized by an ACE reader during hardware testing. Users should still validate behavior on their own printer and keep copies of irreplaceable records.
 
 ## Technical references
 
