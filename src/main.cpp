@@ -35,6 +35,8 @@ uint32_t clearSinceMs = 0;
 bool wroteAnyPage = false;
 uint32_t writeStartedMs = 0;
 uint8_t verificationReadAttempt = 0;
+uint32_t lastEmulationEndedMs = 0;
+constexpr uint32_t PN532_TARGET_RECOVERY_MS = 9000;
 
 void updateEmulationProgress(uint8_t startPage) {
   ui.showEmulationProgress(startPage);
@@ -55,6 +57,24 @@ void emulateTag(const AceTagData &tag, bool fromSaved, bool fromPreset = false) 
                 tag.uidText.c_str(), tag.sku);
   ui.showEmulationWaiting(tag, fromSaved, fromPreset);
   power.wakeDisplayForRfid();
+
+  // After leaving PN532 target mode, firmware/SAM restoration can report PASS
+  // before the chip will reliably ACK another TgInitAsTarget. Hardware traces
+  // show restarts at 2-6 seconds fail, while starts after ~9 seconds succeed.
+  // Keep Cancel responsive while enforcing that recovery interval.
+  while (lastEmulationEndedMs &&
+         millis() - lastEmulationEndedMs < PN532_TARGET_RECOVERY_MS) {
+    if (ui.emulationCancelRequested()) {
+      Serial.println("[emu] Cancelled during PN532 recovery; returning to library");
+      ui.showLibrary(library.entries(), library.available(), library.totalBytes(),
+                     library.usedBytes(), library.invalidCount());
+      return;
+    }
+    delay(20);
+  }
+  if (lastEmulationEndedMs)
+    Serial.println("[emu] PN532 target recovery interval complete");
+
   const EmulationResult result = targetEmulator.run(
       tag, 60000, updateEmulationProgress, checkEmulationCancel);
 
@@ -65,6 +85,7 @@ void emulateTag(const AceTagData &tag, bool fromSaved, bool fromPreset = false) 
   digitalWrite(Hardware::PN532_RSTPD_N, HIGH);
   delay(10);
   const Pn532Status restored = reader.begin();
+  lastEmulationEndedMs = millis();
   Serial.printf("[emu] Reader restore %s\n",
                 restored.found && restored.samConfigured ? "PASS" : "FAILED");
 
