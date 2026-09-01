@@ -14,8 +14,10 @@ enum class EmulationResult : uint8_t {
 
 class Pn532TargetEmulator {
  public:
+  using ProgressCallback = void (*)(uint8_t startPage);
   Pn532TargetEmulator(uint8_t chipSelect, SPIClass &spi);
-  EmulationResult run(const AceTagData &tag, uint32_t activationTimeoutMs = 60000);
+  EmulationResult run(const AceTagData &tag, uint32_t activationTimeoutMs = 60000,
+                      ProgressCallback progress = nullptr);
 
  private:
   bool ready();
@@ -29,7 +31,8 @@ class Pn532TargetEmulator {
                uint32_t responseTimeoutMs);
   bool respond(const uint8_t *data, size_t length);
   bool handleInitiatorCommand(const AceTagData &tag, const uint8_t *data,
-                              size_t length, bool &completed);
+                              size_t length, bool &completed,
+                              ProgressCallback progress);
   void copyPage(const AceTagData &tag, uint8_t page, uint8_t output[4]) const;
   static void printHex(const uint8_t *data, size_t length);
   void select();
@@ -39,4 +42,3 @@ class Pn532TargetEmulator {
   SPIClass &spi_;
   SPISettings settings_{1000000, LSBFIRST, SPI_MODE0};
 };
-

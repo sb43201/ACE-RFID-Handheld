@@ -36,6 +36,10 @@ bool wroteAnyPage = false;
 uint32_t writeStartedMs = 0;
 uint8_t verificationReadAttempt = 0;
 
+void updateEmulationProgress(uint8_t startPage) {
+  ui.showEmulationProgress(startPage);
+}
+
 void emulateTag(const AceTagData &tag, bool fromSaved) {
   if (!tag.readOk || !tag.aceValid) {
     ui.showEmulationResult(false, "Valid ACE tag data required");
@@ -46,7 +50,8 @@ void emulateTag(const AceTagData &tag, bool fromSaved) {
                 fromSaved ? "LIBRARY" : "PRESENT", tag.uidText.c_str(), tag.sku);
   ui.showEmulationWaiting(tag, fromSaved);
   power.wakeDisplayForRfid();
-  const EmulationResult result = targetEmulator.run(tag, 60000);
+  const EmulationResult result = targetEmulator.run(
+      tag, 60000, updateEmulationProgress);
 
   // Target mode changes the PN532 state. A hardware reset guarantees that
   // normal handheld reader mode is restored even after activation timeout.

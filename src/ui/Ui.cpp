@@ -1025,22 +1025,58 @@ void Ui::showEmulationWaiting(const AceTagData &tag, bool fromSaved) {
   emulationFromSaved_ = fromSaved;
   screen_ = UiScreen::EmulateWaiting;
   tft_.fillScreen(BG);
-  drawHeader("READ-ONLY EMULATION");
+  drawHeader("EMULATE TAG");
+
   const uint16_t plate = AceCodec::rgb565(tag);
   const uint16_t text = AceCodec::contrastText(tag);
-  tft_.fillRoundRect(20, 75, 280, 110, 12, plate);
+  tft_.fillRoundRect(20, 62, 280, 105, 12, plate);
   tft_.setTextDatum(MC_DATUM);
   tft_.setTextColor(text, plate);
-  tft_.drawString(tag.colorName, 160, 112, 4);
+  tft_.drawString(tag.colorName, 160, 101, 4);
   tft_.setTextColor(CYAN, BG);
-  tft_.drawString(tag.material, 160, 220, 4);
+  tft_.drawString(tag.material, 160, 199, 4);
+
+  // Keep the primary instruction large enough to read while positioning the
+  // handheld over the printer's ACE sensor.
   tft_.setTextColor(TFT_WHITE, BG);
-  tft_.drawString(fromSaved ? "Present PN532 to ACE sensor" :
-                              "Remove source tag, then present to ACE",
-                  160, 285, 2);
+  if (fromSaved) {
+    tft_.drawString("HOLD NEAR", 160, 255, 4);
+    tft_.drawString("ACE SENSOR", 160, 285, 4);
+  } else {
+    tft_.drawString("REMOVE SOURCE TAG", 160, 250, 4);
+    tft_.drawString("THEN HOLD NEAR ACE", 160, 282, 4);
+  }
+
   tft_.setTextColor(AMBER, BG);
-  tft_.drawString("Touch disabled during RF session", 160, 335, 2);
+  tft_.drawString("READ ONLY - WRITES BLOCKED", 160, 326, 2);
+
+  tft_.setTextColor(TFT_LIGHTGREY, BG);
+  tft_.drawString("ACE READ PROGRESS", 160, 359, 2);
+
+  // ACE reads nine four-page blocks: 04, 08, ... 24. Progress fills one
+  // preallocated segment per successful response, avoiding a full redraw
+  // during the timing-sensitive RF session.
+  for (uint8_t step = 0; step < 9; ++step) {
+    const int16_t x = 14 + step * 33;
+    tft_.drawRect(x, 382, 28, 20, TFT_DARKGREY);
+    tft_.fillRect(x + 2, 384, 24, 16, BG);
+  }
+  tft_.setTextColor(TFT_WHITE, BG);
+  tft_.drawString("04", 14, 418, 2);
+  tft_.setTextDatum(TR_DATUM);
+  tft_.drawString("24", 306, 418, 2);
   tft_.setTextDatum(TL_DATUM);
+}
+
+void Ui::showEmulationProgress(uint8_t startPage) {
+  if (screen_ != UiScreen::EmulateWaiting || startPage < 0x04 ||
+      startPage > 0x24 || ((startPage - 0x04) % 4) != 0) {
+    return;
+  }
+
+  const uint8_t step = (startPage - 0x04) / 4;
+  const int16_t x = 14 + step * 33;
+  tft_.fillRect(x + 2, 384, 24, 16, TFT_GREEN);
 }
 
 void Ui::showEmulationResult(bool complete, const char *detail) {

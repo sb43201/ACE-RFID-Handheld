@@ -163,7 +163,8 @@ bool Pn532TargetEmulator::respond(const uint8_t *data, size_t length) {
 bool Pn532TargetEmulator::handleInitiatorCommand(const AceTagData &tag,
                                                   const uint8_t *data,
                                                   size_t length,
-                                                  bool &completed) {
+                                                  bool &completed,
+                                                  ProgressCallback progress) {
   if (length == 2 && data[0] == 0x30 && data[1] < PAGE_COUNT) {
     const uint8_t startPage = data[1];
     uint8_t reply[16];
@@ -176,6 +177,9 @@ bool Pn532TargetEmulator::handleInitiatorCommand(const AceTagData &tag,
     Serial.printf("[emu TX %06lu ms] ", sentAt);
     printHex(reply, sizeof(reply));
     Serial.println();
+    // The callback draws only one small preallocated progress-bar segment.
+    // It runs after the RF reply has completed, never before the response.
+    if (sent && progress) progress(startPage);
     if (sent && startPage == 0x24) completed = true;
     return sent;
   }
@@ -190,7 +194,8 @@ bool Pn532TargetEmulator::handleInitiatorCommand(const AceTagData &tag,
 }
 
 EmulationResult Pn532TargetEmulator::run(const AceTagData &tag,
-                                         uint32_t activationTimeoutMs) {
+                                         uint32_t activationTimeoutMs,
+                                         ProgressCallback progress) {
   static const uint8_t targetParameters[] = {
     0x00,
     0x04, 0x00, 0x12, 0x34, 0x56, 0x00,
@@ -209,7 +214,8 @@ EmulationResult Pn532TargetEmulator::run(const AceTagData &tag,
 
   bool completed = false;
   if (responseLength > 1 &&
-      !handleInitiatorCommand(tag, response + 1, responseLength - 1, completed))
+      !handleInitiatorCommand(tag, response + 1, responseLength - 1,
+                              completed, progress))
     return EmulationResult::TransportError;
 
   while (true) {
@@ -219,7 +225,8 @@ EmulationResult Pn532TargetEmulator::run(const AceTagData &tag,
       return EmulationResult::TransportError;
     if (!responseLength || response[0] != 0x00)
       return completed ? EmulationResult::Complete : EmulationResult::Interrupted;
-    if (!handleInitiatorCommand(tag, response + 1, responseLength - 1, completed))
+    if (!handleInitiatorCommand(tag, response + 1, responseLength - 1,
+                                completed, progress))
       return EmulationResult::TransportError;
   }
 }
