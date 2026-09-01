@@ -223,10 +223,11 @@ void Ui::drawAceResult() {
     tft_.drawString(label, x + width / 2, 402, 4);
     tft_.setTextDatum(TL_DATUM);
   };
-  actionButton(0, 76, "RAW", HEADER, TFT_WHITE);
-  actionButton(80, 76, "CLONE", CYAN, TFT_BLACK);
-  actionButton(160, 76, "SAVE", 0x0400, TFT_WHITE);
-  actionButton(240, 80, "WRITE", HEADER, TFT_WHITE);
+  actionButton(0, 60, "RAW", HEADER, TFT_WHITE);
+  actionButton(64, 60, "CLONE", CYAN, TFT_BLACK);
+  actionButton(128, 60, "SAVE", 0x0400, TFT_WHITE);
+  actionButton(192, 60, "EMU", AMBER, TFT_BLACK);
+  actionButton(256, 64, "WRITE", HEADER, TFT_WHITE);
   drawFooterButton(0, 320, "HOME", 0x2124);
 }
 
@@ -499,16 +500,18 @@ UiAction Ui::handleTouch(const UiTouchSample &sample, bool controlsAllowed) {
   }
   else if (screen_ == UiScreen::AceResult && touchStartY_ >= 376 &&
            touchStartY_ < 428 && hasCachedTag_) {
-    if (touchStartX_ < 78) {
+    if (touchStartX_ < 62) {
       rawIsSaved_ = false;
       screen_ = UiScreen::RawInspector;
       rawStartOffset_ = 0;
       drawRawInspector();
       Serial.println("[ui] Screen=RAW_INSPECTOR");
-    } else if (touchStartX_ < 158) {
+    } else if (touchStartX_ < 126) {
       return UiAction::CloneStart;
-    } else if (touchStartX_ < 238) {
+    } else if (touchStartX_ < 190) {
       return UiAction::SaveTag;
+    } else if (touchStartX_ < 254) {
+      return UiAction::EmulatePresent;
     } else showWriteSelect();
   }
   else if (screen_ == UiScreen::GenericTag &&
@@ -539,10 +542,11 @@ UiAction Ui::handleTouch(const UiTouchSample &sample, bool controlsAllowed) {
   } else if (screen_ == UiScreen::SavedDetail && touchStartY_ >= 428) {
     return UiAction::RefreshLibrary;
   } else if (screen_ == UiScreen::SavedDetail && touchStartY_ >= 376) {
-    if (touchStartX_ < 106) {
+    if (touchStartX_ < 78) {
       rawIsSaved_ = true; rawStartOffset_ = 0; screen_ = UiScreen::SavedRaw;
       drawRawInspector();
-    } else if (touchStartX_ < 212) return UiAction::WriteSaved;
+    } else if (touchStartX_ < 158) return UiAction::EmulateSaved;
+    else if (touchStartX_ < 238) return UiAction::WriteSaved;
     else {
       screen_ = UiScreen::DeleteConfirm;
       tft_.fillScreen(BG); drawHeader("CONFIRM DELETE");
@@ -611,6 +615,9 @@ UiAction Ui::handleTouch(const UiTouchSample &sample, bool controlsAllowed) {
       return UiAction::None;
     }
     if (touchStartY_ >= 420) return UiAction::CloseSetup;
+  } else if (screen_ == UiScreen::EmulateResult && touchStartY_ >= 420) {
+    if (emulationFromSaved_) { screen_ = UiScreen::SavedDetail; drawSavedDetail(); }
+    else restoreRetainedAce();
   }
   return UiAction::None;
 }
@@ -642,7 +649,8 @@ bool Ui::writeWorkflowActive() const {
          screen_ == UiScreen::WriteWaiting || screen_ == UiScreen::WriteProgress ||
          screen_ == UiScreen::WriteSuccess || screen_ == UiScreen::WriteFailure ||
          screen_ == UiScreen::CloneCaptured || screen_ == UiScreen::CloneWaiting ||
-         screen_ == UiScreen::CloneSuccess || screen_ == UiScreen::Setup;
+         screen_ == UiScreen::CloneSuccess || screen_ == UiScreen::Setup ||
+         screen_ == UiScreen::EmulateWaiting || screen_ == UiScreen::EmulateResult;
 }
 
 void Ui::showWriteSelect() {
@@ -1013,6 +1021,43 @@ void Ui::showSavedDetail(uint32_t id, const AceTagData &tag) {
   Serial.printf("[ui] Screen=SAVED_DETAIL id=%lu\n", static_cast<unsigned long>(id));
 }
 
+void Ui::showEmulationWaiting(const AceTagData &tag, bool fromSaved) {
+  emulationFromSaved_ = fromSaved;
+  screen_ = UiScreen::EmulateWaiting;
+  tft_.fillScreen(BG);
+  drawHeader("READ-ONLY EMULATION");
+  const uint16_t plate = AceCodec::rgb565(tag);
+  const uint16_t text = AceCodec::contrastText(tag);
+  tft_.fillRoundRect(20, 75, 280, 110, 12, plate);
+  tft_.setTextDatum(MC_DATUM);
+  tft_.setTextColor(text, plate);
+  tft_.drawString(tag.colorName, 160, 112, 4);
+  tft_.setTextColor(CYAN, BG);
+  tft_.drawString(tag.material, 160, 220, 4);
+  tft_.setTextColor(TFT_WHITE, BG);
+  tft_.drawString(fromSaved ? "Present PN532 to ACE sensor" :
+                              "Remove source tag, then present to ACE",
+                  160, 285, 2);
+  tft_.setTextColor(AMBER, BG);
+  tft_.drawString("Touch disabled during RF session", 160, 335, 2);
+  tft_.setTextDatum(TL_DATUM);
+}
+
+void Ui::showEmulationResult(bool complete, const char *detail) {
+  screen_ = UiScreen::EmulateResult;
+  tft_.fillScreen(BG);
+  drawHeader("EMULATION RESULT");
+  tft_.setTextDatum(MC_DATUM);
+  tft_.setTextColor(complete ? TFT_GREEN : TFT_RED, BG);
+  tft_.drawString(complete ? "READ COMPLETE" : "READ FAILED", 160, 165, 4);
+  tft_.setTextColor(TFT_WHITE, BG);
+  tft_.drawString(detail, 160, 245, 2);
+  tft_.setTextColor(MUTED, BG);
+  tft_.drawString("Remove handheld from ACE sensor", 160, 315, 2);
+  drawFooterButton(0, 320, "DONE", 0x2124);
+  tft_.setTextDatum(TL_DATUM);
+}
+
 void Ui::drawSavedDetail() {
   const AceTagData &tag = savedTag_;
   tft_.fillScreen(BG); drawHeader("SAVED TAG");
@@ -1048,9 +1093,10 @@ void Ui::drawSavedDetail() {
     tft_.setTextDatum(MC_DATUM); tft_.setTextColor(textColor, fill);
     tft_.drawString(label, x + width / 2, 402, 4);
   };
-  savedAction(0, 104, "RAW", HEADER, TFT_WHITE);
-  savedAction(108, 104, "WRITE", CYAN, TFT_BLACK);
-  savedAction(216, 104, "DELETE", 0x7800, TFT_WHITE);
+  savedAction(0, 76, "RAW", HEADER, TFT_WHITE);
+  savedAction(80, 76, "EMU", AMBER, TFT_BLACK);
+  savedAction(160, 76, "WRITE", CYAN, TFT_BLACK);
+  savedAction(240, 80, "DELETE", 0x7800, TFT_WHITE);
   drawFooterButton(0, 320, "BACK", 0x2124);
   tft_.setTextDatum(TL_DATUM);
 }

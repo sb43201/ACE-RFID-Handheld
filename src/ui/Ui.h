@@ -15,6 +15,7 @@ enum class UiScreen : uint8_t {
   CloneCaptured, CloneWaiting, CloneSuccess, LibraryList, SavedDetail, SavedRaw,
   DeleteConfirm, SaveDuplicate, SaveResult, StorageInfo, FormatConfirm,
   EraseConfirm, Setup
+  , EmulateWaiting, EmulateResult
 };
 
 enum class UiAction : uint8_t {
@@ -22,6 +23,7 @@ enum class UiAction : uint8_t {
   SaveCopy, OpenLibrary, OpenSaved, WriteSaved, DeleteSaved, ConfirmDelete,
   RefreshLibrary, FormatStorage, OpenSetup, CalibrateTouch, CycleVolume,
   CycleScreenTimeout, CloseSetup
+  , EmulatePresent, EmulateSaved
 };
 
 struct UiTouchSample {
@@ -78,6 +80,8 @@ class Ui {
   void showSaveResult(bool success, uint32_t id, const char *message);
   void showDeleteResult(bool success);
   void showSetup(const char *volumeLabel, uint16_t screenTimeoutSeconds);
+  void showEmulationWaiting(const AceTagData &tag, bool fromSaved);
+  void showEmulationResult(bool complete, const char *detail);
   void runTouchCalibration() { calibrate(); }
   void updateBattery(uint8_t percent, uint16_t millivolts);
   uint32_t selectedLibraryId() const { return selectedLibraryId_; }
@@ -143,6 +147,7 @@ class Ui {
   size_t storageUsed_ = 0;
   uint16_t invalidFiles_ = 0;
   bool storageAvailable_ = false;
+  bool emulationFromSaved_ = false;
   uint8_t batteryPercent_ = 0;
   uint16_t batteryMillivolts_ = 0;
 };

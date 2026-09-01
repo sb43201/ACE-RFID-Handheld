@@ -4,6 +4,7 @@
 #include "config/Hardware.h"
 #include "audio/MelodyPlayer.h"
 #include "rfid/Pn532Reader.h"
+#include "rfid/Pn532TargetEmulator.h"
 #include "rfid/AceCodec.h"
 #include "rfid/AcePresets.h"
 #include "power/PowerManager.h"
@@ -14,6 +15,7 @@
 Ui ui;
 SPIClass pn532Spi(VSPI);
 Pn532Reader reader(Hardware::PN532_SS, pn532Spi);
+Pn532TargetEmulator targetEmulator(Hardware::PN532_SS, pn532Spi);
 MelodyPlayer melody;
 PowerManager power;
 BatteryMonitor battery;
@@ -33,6 +35,37 @@ uint32_t clearSinceMs = 0;
 bool wroteAnyPage = false;
 uint32_t writeStartedMs = 0;
 uint8_t verificationReadAttempt = 0;
+
+void emulateTag(const AceTagData &tag, bool fromSaved) {
+  if (!tag.readOk || !tag.aceValid) {
+    ui.showEmulationResult(false, "Valid ACE tag data required");
+    melody.play(MelodyPlayer::Cue::Error);
+    return;
+  }
+  Serial.printf("[emu] Source=%s UID=%s SKU=%s\n",
+                fromSaved ? "LIBRARY" : "PRESENT", tag.uidText.c_str(), tag.sku);
+  ui.showEmulationWaiting(tag, fromSaved);
+  power.wakeDisplayForRfid();
+  const EmulationResult result = targetEmulator.run(tag, 60000);
+
+  // Target mode changes the PN532 state. A hardware reset guarantees that
+  // normal handheld reader mode is restored even after activation timeout.
+  digitalWrite(Hardware::PN532_RSTPD_N, LOW);
+  delay(2);
+  digitalWrite(Hardware::PN532_RSTPD_N, HIGH);
+  delay(10);
+  const Pn532Status restored = reader.begin();
+  Serial.printf("[emu] Reader restore %s\n",
+                restored.found && restored.samConfigured ? "PASS" : "FAILED");
+
+  const bool complete = result == EmulationResult::Complete;
+  const char *detail = complete ? "ACE read pages 4-39" :
+                       result == EmulationResult::Interrupted ? "ACE scan was interrupted" :
+                       result == EmulationResult::Timeout ? "No ACE reader detected" :
+                       "PN532 target transport error";
+  ui.showEmulationResult(complete, detail);
+  melody.play(complete ? MelodyPlayer::Cue::TagFound : MelodyPlayer::Cue::Error);
+}
 
 bool isCopyMode() {
   return operationMode == OperationMode::Clone || operationMode == OperationMode::SavedCopy;
@@ -226,6 +259,14 @@ void loop() {
     }
   }
   if (action == UiAction::WriteSaved) beginSavedCopy(true);
+  if (action == UiAction::EmulatePresent) {
+    emulateTag(ui.retainedTag(), false);
+    return;
+  }
+  if (action == UiAction::EmulateSaved) {
+    emulateTag(ui.selectedSavedTag(), true);
+    return;
+  }
   if (action == UiAction::CloneStart) beginClone(true);
   if (action == UiAction::WriteArmed) beginWriteAttempt();
   if (action == UiAction::WriteRetry) {
