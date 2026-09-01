@@ -44,24 +44,6 @@ bool checkEmulationCancel() {
   return ui.emulationCancelRequested();
 }
 
-void preparePn532TargetMode() {
-  // Start every emulation from a known PN532 state. Reader/SAM mode can leave
-  // the chip unable to ACK TgInitAsTarget until RSTPD_N is asserted.
-  digitalWrite(Hardware::TOUCH_CS_PIN, HIGH);
-  digitalWrite(5, HIGH);  // Shared VSPI bus: keep the onboard SD deselected.
-  digitalWrite(Hardware::PN532_SS, HIGH);
-  digitalWrite(Hardware::PN532_RSTPD_N, LOW);
-  delay(5);
-  digitalWrite(Hardware::PN532_RSTPD_N, HIGH);
-  delay(10);
-  // PN532 SPI wake-up sequence used by the standalone target test.
-  digitalWrite(Hardware::PN532_SS, LOW);
-  delay(2);
-  digitalWrite(Hardware::PN532_SS, HIGH);
-  delay(5);
-  Serial.println("[emu] PN532 reset and SPI wake complete");
-}
-
 void emulateTag(const AceTagData &tag, bool fromSaved, bool fromPreset = false) {
   if (!tag.readOk || !tag.aceValid) {
     ui.showEmulationResult(false, "Valid ACE tag data required");
@@ -73,7 +55,6 @@ void emulateTag(const AceTagData &tag, bool fromSaved, bool fromPreset = false) 
                 tag.uidText.c_str(), tag.sku);
   ui.showEmulationWaiting(tag, fromSaved, fromPreset);
   power.wakeDisplayForRfid();
-  preparePn532TargetMode();
   const EmulationResult result = targetEmulator.run(
       tag, 60000, updateEmulationProgress, checkEmulationCancel);
 

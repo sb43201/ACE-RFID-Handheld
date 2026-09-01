@@ -220,15 +220,10 @@ EmulationResult Pn532TargetEmulator::run(const AceTagData &tag,
   cancelled_ = false;
   lastCancelPollMs_ = millis() - 20;
   Serial.printf("[emu] Waiting for ACE: %s %s\n", tag.material, tag.colorName);
-  const uint32_t activationStarted = millis();
   if (!command(TG_INIT_AS_TARGET, targetParameters, sizeof(targetParameters),
                response, sizeof(response), responseLength, activationTimeoutMs)) {
     if (cancelled_) return EmulationResult::Cancelled;
-    // ACK/transport failures return in roughly one second. Only report a
-    // no-reader timeout when the full activation window actually elapsed.
-    return millis() - activationStarted + 100 >= activationTimeoutMs
-               ? EmulationResult::Timeout
-               : EmulationResult::TransportError;
+    return EmulationResult::Timeout;
   }
 
   bool completed = false;
