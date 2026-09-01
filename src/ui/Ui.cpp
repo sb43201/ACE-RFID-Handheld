@@ -768,8 +768,8 @@ void Ui::drawWritePreview() {
   row(354, "Diameter", String(selectedPreset().diameter / 100.0f, 2) + " mm");
   row(382, "Length", String(selectedPreset().lengthMeters) + " m");
   drawFooterButton(0, 102, "BACK", 0x2124);
-  drawFooterButton(106, 104, "EMU", CYAN, TFT_BLACK);
-  drawFooterButton(214, 106, "WRITE", HEADER);
+  drawFooterButton(106, 104, "EMU", AMBER, TFT_BLACK);
+  drawFooterButton(214, 106, "WRITE", CYAN, TFT_BLACK);
 }
 
 void Ui::showWriteWaiting(bool fieldMustClear) {
