@@ -474,8 +474,9 @@ UiAction Ui::handleTouch(const UiTouchSample &sample, bool controlsAllowed) {
       if (index >= 0) { selectedPreset_ = index; screen_ = UiScreen::WritePreview; drawWritePreview(); }
     } else if (touchStartY_ >= 420) showReaderStatus(readerStatus_);
   } else if (screen_ == UiScreen::WritePreview && touchStartY_ >= 420) {
-    if (touchStartX_ < 106) showWriteSelect();
-    else if (touchStartX_ < 214) return UiAction::EmulatePreset;
+    if (touchStartX_ < 78) showWriteSelect();
+    else if (touchStartX_ < 158) return UiAction::EmulatePreset;
+    else if (touchStartX_ < 238) return UiAction::SavePreset;
     else { showWriteWaiting(true); return UiAction::WriteArmed; }
   } else if ((screen_ == UiScreen::WriteWaiting || screen_ == UiScreen::CloneCaptured ||
               screen_ == UiScreen::CloneWaiting) && touchStartY_ >= 420) {
@@ -571,7 +572,11 @@ UiAction Ui::handleTouch(const UiTouchSample &sample, bool controlsAllowed) {
     if (touchStartX_ < 158) return UiAction::SaveCopy;
     restoreRetainedAce();
   } else if (screen_ == UiScreen::SaveResult && touchStartY_ >= 420) {
-    restoreRetainedAce();
+    if (saveResultFromPreset_) {
+      saveResultFromPreset_ = false;
+      screen_ = UiScreen::WritePreview;
+      drawWritePreview();
+    } else restoreRetainedAce();
   } else if (screen_ == UiScreen::StorageInfo && touchStartY_ >= 420) {
     if (!storageAvailable_ && touchStartX_ >= 160) {
       screen_ = UiScreen::FormatConfirm;
@@ -767,9 +772,10 @@ void Ui::drawWritePreview() {
   row(326, "Bed", String(selectedPreset().bedMin) + " - " + selectedPreset().bedMax + " C");
   row(354, "Diameter", String(selectedPreset().diameter / 100.0f, 2) + " mm");
   row(382, "Length", String(selectedPreset().lengthMeters) + " m");
-  drawFooterButton(0, 102, "BACK", 0x2124);
-  drawFooterButton(106, 104, "EMU", AMBER, TFT_BLACK);
-  drawFooterButton(214, 106, "WRITE", CYAN, TFT_BLACK);
+  drawFooterButton(0, 74, "BACK", 0x2124);
+  drawFooterButton(78, 76, "EMU", AMBER, TFT_BLACK);
+  drawFooterButton(158, 76, "SAVE", TFT_GREEN, TFT_BLACK);
+  drawFooterButton(238, 82, "WRITE", CYAN, TFT_BLACK);
 }
 
 void Ui::showWriteWaiting(bool fieldMustClear) {
@@ -1183,7 +1189,10 @@ void Ui::showSaveDuplicate() {
   tft_.setTextDatum(TL_DATUM);
 }
 
-void Ui::showSaveResult(bool success, uint32_t id, const char *message) {
+void Ui::showSaveResult(bool success, uint32_t id, const char *message,
+                        const AceTagData *displayTag, bool returnToPreset) {
+  saveResultFromPreset_ = returnToPreset;
+  const AceTagData &resultTag = displayTag ? *displayTag : cachedTag_;
   screen_ = UiScreen::SaveResult;
   tft_.fillScreen(BG); drawHeader(success ? "SAVED" : "SAVE FAILED");
   tft_.setTextDatum(MC_DATUM); tft_.setTextColor(success ? TFT_GREEN : TFT_RED, BG);
@@ -1192,7 +1201,7 @@ void Ui::showSaveResult(bool success, uint32_t id, const char *message) {
   tft_.setTextColor(TFT_WHITE, BG); tft_.TFT_eSPI::drawString(message, 160, 220, 2);
   if (success) {
     tft_.setTextColor(CYAN, BG);
-    tft_.drawString(String(cachedTag_.material) + " " + cachedTag_.colorName, 160, 270, 4);
+    tft_.drawString(String(resultTag.material) + " " + resultTag.colorName, 160, 270, 4);
     tft_.setTextFont(2); tft_.setTextSize(1);
     tft_.setTextColor(MUTED, BG);
     tft_.TFT_eSPI::drawString("Library ID " + String(id), 160, 325, 2);

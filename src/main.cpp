@@ -44,6 +44,29 @@ bool checkEmulationCancel() {
   return ui.emulationCancelRequested();
 }
 
+void assignPresetUid(AceTagData &tag) {
+  // Saved records require a UID. Built-in presets have no physical source
+  // tag, so derive a stable seven-byte identifier from their ACE payload.
+  uint64_t hash = 1469598103934665603ULL;
+  for (uint8_t page = 4; page <= 31; ++page) {
+    for (uint8_t column = 0; column < 4; ++column) {
+      hash ^= tag.pages[page][column];
+      hash *= 1099511628211ULL;
+    }
+  }
+  tag.uidLength = 7;
+  tag.uid[0] = 0x04;
+  for (uint8_t i = 1; i < 7; ++i) tag.uid[i] = hash >> ((i - 1) * 8);
+  String uid;
+  for (uint8_t i = 0; i < tag.uidLength; ++i) {
+    if (i) uid += ':';
+    if (tag.uid[i] < 0x10) uid += '0';
+    uid += String(tag.uid[i], HEX);
+  }
+  uid.toUpperCase();
+  tag.uidText = uid;
+}
+
 void emulateTag(const AceTagData &tag, bool fromSaved, bool fromPreset = false) {
   if (!tag.readOk || !tag.aceValid) {
     ui.showEmulationResult(false, "Valid ACE tag data required");
@@ -305,6 +328,24 @@ void loop() {
     AceCodec::validateAndDecode(presetTag);
     emulateTag(presetTag, false, true);
     return;
+  }
+  if (action == UiAction::SavePreset) {
+    AceTagData presetTag;
+    AcePresets::buildTag(ui.selectedPreset(), presetTag);
+    AceCodec::validateAndDecode(presetTag);
+    assignPresetUid(presetTag);
+    uint32_t savedId = 0;
+    const LibrarySaveResult result = library.save(presetTag, false, savedId);
+    const bool ok = result == LibrarySaveResult::Ok;
+    const char *message = ok ? "Preset saved to Library" :
+                          result == LibrarySaveResult::Duplicate ? "Preset already in Library" :
+                          result == LibrarySaveResult::Unavailable ? "Internal storage unavailable" :
+                          result == LibrarySaveResult::Full ? "Storage full - delete saved tags" :
+                          result == LibrarySaveResult::InvalidSource ? "Preset data is invalid" :
+                          result == LibrarySaveResult::CommitFailed ? "Could not commit saved file" :
+                          "Could not write saved file";
+    ui.showSaveResult(ok, savedId, message, &presetTag, true);
+    melody.play(ok ? MelodyPlayer::Cue::TagFound : MelodyPlayer::Cue::Error);
   }
   if (action == UiAction::CloneStart) beginClone(true);
   if (action == UiAction::WriteArmed) beginWriteAttempt();
