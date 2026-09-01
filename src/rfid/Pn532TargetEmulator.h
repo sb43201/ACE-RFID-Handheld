@@ -24,7 +24,7 @@ class Pn532TargetEmulator {
 
  private:
   bool ready();
-  bool waitReady(uint32_t timeoutMs);
+  bool waitReady(uint32_t timeoutMs, bool allowCancel = false);
   void writeFrame(const uint8_t *command, size_t length);
   bool readAck(uint32_t timeoutMs);
   bool readResponse(uint8_t command, uint8_t *data, size_t capacity,

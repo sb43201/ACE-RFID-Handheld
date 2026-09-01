@@ -33,18 +33,20 @@ bool Pn532TargetEmulator::ready() {
   return value;
 }
 
-bool Pn532TargetEmulator::waitReady(uint32_t timeoutMs) {
+bool Pn532TargetEmulator::waitReady(uint32_t timeoutMs, bool allowCancel) {
   const uint32_t started = millis();
   do {
+    // Check the PN532 first. In particular, never insert a touchscreen SPI
+    // transaction ahead of a command ACK that is already waiting.
+    if (ready()) return true;
     const uint32_t now = millis();
-    if (cancel_ && now - lastCancelPollMs_ >= 20) {
+    if (allowCancel && cancel_ && now - lastCancelPollMs_ >= 20) {
       lastCancelPollMs_ = now;
       if (cancel_()) {
         cancelled_ = true;
         return false;
       }
     }
-    if (ready()) return true;
     delay(2);
   } while (millis() - started < timeoutMs);
   return false;
@@ -70,7 +72,9 @@ void Pn532TargetEmulator::writeFrame(const uint8_t *command, size_t length) {
 
 bool Pn532TargetEmulator::readAck(uint32_t timeoutMs) {
   static const uint8_t expected[] = {0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00};
-  if (!waitReady(timeoutMs)) return false;
+  // The touchscreen shares VSPI. Do not poll it inside the short, critical
+  // PN532 ACK window; cancellation remains available while awaiting response.
+  if (!waitReady(timeoutMs, false)) return false;
   uint8_t actual[sizeof(expected)];
   select();
   spi_.transfer(SPI_DATA_READ);
@@ -83,7 +87,7 @@ bool Pn532TargetEmulator::readResponse(uint8_t commandCode, uint8_t *data,
                                        size_t capacity, size_t &length,
                                        uint32_t timeoutMs) {
   length = 0;
-  if (!waitReady(timeoutMs)) return false;
+  if (!waitReady(timeoutMs, true)) return false;
   select();
   spi_.transfer(SPI_DATA_READ);
   const uint8_t p0 = spi_.transfer(0), p1 = spi_.transfer(0), p2 = spi_.transfer(0);
