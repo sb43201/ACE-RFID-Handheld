@@ -74,6 +74,20 @@ void emulateTag(const AceTagData &tag, bool fromSaved, bool fromPreset = false) 
   ui.showEmulationWaiting(tag, fromSaved, fromPreset);
   power.wakeDisplayForRfid();
   preparePn532TargetMode();
+
+  // A hardware reset clears the PN532's SAM configuration. Reapply the same
+  // initialization used by the working standalone target test before issuing
+  // TgInitAsTarget.
+  const Pn532Status targetReady = reader.begin();
+  Serial.printf("[emu] Target preparation found=%s SAM=%s\n",
+                targetReady.found ? "YES" : "NO",
+                targetReady.samConfigured ? "PASS" : "FAIL");
+  if (!targetReady.found || !targetReady.samConfigured) {
+    ui.showEmulationResult(false, "PN532 initialization failed");
+    melody.play(MelodyPlayer::Cue::Error);
+    return;
+  }
+
   const EmulationResult result = targetEmulator.run(
       tag, 60000, updateEmulationProgress, checkEmulationCancel);
 
