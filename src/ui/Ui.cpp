@@ -474,7 +474,8 @@ UiAction Ui::handleTouch(const UiTouchSample &sample, bool controlsAllowed) {
       if (index >= 0) { selectedPreset_ = index; screen_ = UiScreen::WritePreview; drawWritePreview(); }
     } else if (touchStartY_ >= 420) showReaderStatus(readerStatus_);
   } else if (screen_ == UiScreen::WritePreview && touchStartY_ >= 420) {
-    if (touchStartX_ < 158) showWriteSelect();
+    if (touchStartX_ < 106) showWriteSelect();
+    else if (touchStartX_ < 214) return UiAction::EmulatePreset;
     else { showWriteWaiting(true); return UiAction::WriteArmed; }
   } else if ((screen_ == UiScreen::WriteWaiting || screen_ == UiScreen::CloneCaptured ||
               screen_ == UiScreen::CloneWaiting) && touchStartY_ >= 420) {
@@ -617,6 +618,7 @@ UiAction Ui::handleTouch(const UiTouchSample &sample, bool controlsAllowed) {
     if (touchStartY_ >= 420) return UiAction::CloseSetup;
   } else if (screen_ == UiScreen::EmulateResult && touchStartY_ >= 420) {
     if (emulationFromSaved_) { screen_ = UiScreen::SavedDetail; drawSavedDetail(); }
+    else if (emulationFromPreset_) { screen_ = UiScreen::WritePreview; drawWritePreview(); }
     else restoreRetainedAce();
   }
   return UiAction::None;
@@ -765,8 +767,9 @@ void Ui::drawWritePreview() {
   row(326, "Bed", String(selectedPreset().bedMin) + " - " + selectedPreset().bedMax + " C");
   row(354, "Diameter", String(selectedPreset().diameter / 100.0f, 2) + " mm");
   row(382, "Length", String(selectedPreset().lengthMeters) + " m");
-  drawFooterButton(0, 156, "BACK", 0x2124);
-  drawFooterButton(160, 160, "WRITE TAG", HEADER);
+  drawFooterButton(0, 102, "BACK", 0x2124);
+  drawFooterButton(106, 104, "EMU", CYAN, TFT_BLACK);
+  drawFooterButton(214, 106, "WRITE", HEADER);
 }
 
 void Ui::showWriteWaiting(bool fieldMustClear) {
@@ -1021,8 +1024,10 @@ void Ui::showSavedDetail(uint32_t id, const AceTagData &tag) {
   Serial.printf("[ui] Screen=SAVED_DETAIL id=%lu\n", static_cast<unsigned long>(id));
 }
 
-void Ui::showEmulationWaiting(const AceTagData &tag, bool fromSaved) {
+void Ui::showEmulationWaiting(const AceTagData &tag, bool fromSaved,
+                              bool fromPreset) {
   emulationFromSaved_ = fromSaved;
+  emulationFromPreset_ = fromPreset;
   emulationCancelArmed_ = false;
   screen_ = UiScreen::EmulateWaiting;
   tft_.fillScreen(BG);

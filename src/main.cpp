@@ -44,15 +44,16 @@ bool checkEmulationCancel() {
   return ui.emulationCancelRequested();
 }
 
-void emulateTag(const AceTagData &tag, bool fromSaved) {
+void emulateTag(const AceTagData &tag, bool fromSaved, bool fromPreset = false) {
   if (!tag.readOk || !tag.aceValid) {
     ui.showEmulationResult(false, "Valid ACE tag data required");
     melody.play(MelodyPlayer::Cue::Error);
     return;
   }
   Serial.printf("[emu] Source=%s UID=%s SKU=%s\n",
-                fromSaved ? "LIBRARY" : "PRESENT", tag.uidText.c_str(), tag.sku);
-  ui.showEmulationWaiting(tag, fromSaved);
+                fromSaved ? "LIBRARY" : fromPreset ? "PRESET" : "PRESENT",
+                tag.uidText.c_str(), tag.sku);
+  ui.showEmulationWaiting(tag, fromSaved, fromPreset);
   power.wakeDisplayForRfid();
   const EmulationResult result = targetEmulator.run(
       tag, 60000, updateEmulationProgress, checkEmulationCancel);
@@ -281,6 +282,13 @@ void loop() {
   }
   if (action == UiAction::EmulateSaved) {
     emulateTag(ui.selectedSavedTag(), true);
+    return;
+  }
+  if (action == UiAction::EmulatePreset) {
+    AceTagData presetTag;
+    AcePresets::buildTag(ui.selectedPreset(), presetTag);
+    AceCodec::validateAndDecode(presetTag);
+    emulateTag(presetTag, false, true);
     return;
   }
   if (action == UiAction::CloneStart) beginClone(true);

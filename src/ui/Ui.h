@@ -23,7 +23,7 @@ enum class UiAction : uint8_t {
   SaveCopy, OpenLibrary, OpenSaved, WriteSaved, DeleteSaved, ConfirmDelete,
   RefreshLibrary, FormatStorage, OpenSetup, CalibrateTouch, CycleVolume,
   CycleScreenTimeout, CloseSetup
-  , EmulatePresent, EmulateSaved
+  , EmulatePresent, EmulateSaved, EmulatePreset
 };
 
 struct UiTouchSample {
@@ -80,7 +80,8 @@ class Ui {
   void showSaveResult(bool success, uint32_t id, const char *message);
   void showDeleteResult(bool success);
   void showSetup(const char *volumeLabel, uint16_t screenTimeoutSeconds);
-  void showEmulationWaiting(const AceTagData &tag, bool fromSaved);
+  void showEmulationWaiting(const AceTagData &tag, bool fromSaved,
+                            bool fromPreset = false);
   void showEmulationProgress(uint8_t startPage);
   bool emulationCancelRequested();
   void showEmulationResult(bool complete, const char *detail);
@@ -150,6 +151,7 @@ class Ui {
   uint16_t invalidFiles_ = 0;
   bool storageAvailable_ = false;
   bool emulationFromSaved_ = false;
+  bool emulationFromPreset_ = false;
   bool emulationCancelArmed_ = false;
   uint8_t batteryPercent_ = 0;
   uint16_t batteryMillivolts_ = 0;
