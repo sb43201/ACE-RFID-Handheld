@@ -36,7 +36,7 @@ The handheld combines a Hosyond/LCDWiki E32R35T 3.5-inch touchscreen with a PN53
 | 1 | PN532 NXP NFC/RFID module | [Amazon](https://a.co/d/03boXSBR) | Configure the module for SPI mode |
 | 1 | 3.7 V, 1000 mAh LiPo battery | [Amazon](https://a.co/d/0ji3c6oG) | Verify connector type and polarity before connecting |
 | 1 | 4 Ω, 3 W mini speaker | [Amazon](https://a.co/d/07AWv2H9) | Audio feedback and startup/success/error cues |
-| 1 | 8×8 mm DPDT tactile switch | [Amazon](https://a.co/d/04x0NMgU) | Physical side control |
+| 1 | 8×8 mm DPDT tactile switch | [Amazon](https://a.co/d/04x0NMgU) | Power switch |
 | 1 kit | 1.25 mm JST/Molex connector kit | [Amazon](https://a.co/d/0b7Jxc98) | Internal removable wiring connections |
 | As required | NTAG213 RFID tags | [Amazon](https://a.co/d/0dDuntYi) | Rewritable test/destination tags; verify usable pages and lock state before writing |
 | As required | Hookup wire, heat-shrink tubing, and small fasteners | — | Final lengths and fasteners depend on the enclosure build |
