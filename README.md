@@ -28,6 +28,20 @@ The handheld combines a Hosyond/LCDWiki E32R35T 3.5-inch touchscreen with a PN53
 - Elechouse-style PN532 NFC/RFID V3 module configured for SPI
 - Common 3.3 V supply and ground
 
+### Bill of materials
+
+| Qty. | Component | Purchase link | Notes |
+|---:|---|---|---|
+| 1 | Hosyond 3.5-inch 320×480 Touch Screen ESP32 Display (Cheap Yellow Display) | [Amazon](https://a.co/d/01DXrowN) | Main ESP32, touchscreen, display, battery input, and microSD hardware |
+| 1 | Elechouse-style PN532 NFC/RFID V3 module | — | Configure the module for SPI mode |
+| 1 | 4 Ω, 3 W mini speaker | [Amazon](https://a.co/d/07AWv2H9) | Audio feedback and startup/success/error cues |
+| 1 | 8×8 mm DPDT tactile switch | [Amazon](https://a.co/d/04x0NMgU) | Physical side control |
+| 1 kit | 1.25 mm JST/Molex connector kit | [Amazon](https://a.co/d/0b7Jxc98) | Internal removable wiring connections |
+| As required | Hookup wire, heat-shrink tubing, and small fasteners | — | Final lengths and fasteners depend on the enclosure build |
+| 1 set | Printed handheld enclosure | [Enclosure files](enclosure/) | Print the matching front and rear enclosure parts |
+
+Amazon links are provided for convenience and may change or become unavailable. Verify dimensions, voltage, pinout, and connector polarity before ordering or assembly.
+
 ### PN532 wiring
 
 Disconnect power before changing the PN532 interface switches. Configure the module for **SPI mode**.
